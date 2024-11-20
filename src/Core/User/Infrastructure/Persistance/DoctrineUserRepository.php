@@ -2,15 +2,20 @@
 
 namespace App\Core\User\Infrastructure\Persistance;
 
+use App\Core\User\Domain\Event\UserCreatedEvent;
 use App\Core\User\Domain\Exception\UserNotFoundException;
 use App\Core\User\Domain\Repository\UserRepositoryInterface;
 use App\Core\User\Domain\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class DoctrineUserRepository implements UserRepositoryInterface
 {
-    public function __construct(private readonly EntityManagerInterface $entityManager) {}
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly EventDispatcherInterface $eventDispatcher
+    ) {}
 
     /**
      * @throws NonUniqueResultException
@@ -36,6 +41,9 @@ class DoctrineUserRepository implements UserRepositoryInterface
     public function save(User $user): void
     {
         $this->entityManager->persist($user);
+
+        $this->eventDispatcher->dispatch(new UserCreatedEvent($user));
+
     }
 
     public function flush(): void
