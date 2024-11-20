@@ -4,9 +4,11 @@ namespace App\Tests\Unit\Core\Invoice\Application\Command\CreateInvoice;
 
 use App\Core\Invoice\Application\Command\CreateInvoice\CreateInvoiceCommand;
 use App\Core\Invoice\Application\Command\CreateInvoice\CreateInvoiceHandler;
+use App\Core\Invoice\Domain\Exception\CannotCreateInvoiceForInactiveUserException;
 use App\Core\Invoice\Domain\Exception\InvoiceException;
 use App\Core\Invoice\Domain\Invoice;
 use App\Core\Invoice\Domain\Repository\InvoiceRepositoryInterface;
+use App\Core\Invoice\Infrastructure\Persistance\DoctrineInvoiceRepository;
 use App\Core\User\Domain\Exception\UserNotFoundException;
 use App\Core\User\Domain\Repository\UserRepositoryInterface;
 use App\Core\User\Domain\User;
@@ -40,7 +42,8 @@ class CreateInvoiceHandlerTest extends TestCase
         $user = $this->createMock(User::class);
 
         $invoice = new Invoice(
-            $user, 12500
+            $user,
+            12500
         );
 
         $this->userRepository->expects(self::once())
@@ -73,5 +76,25 @@ class CreateInvoiceHandlerTest extends TestCase
         $this->expectException(InvoiceException::class);
 
         $this->handler->__invoke((new CreateInvoiceCommand('test@test.pl', -5)));
+    }
+
+    public function test_handle_user_not_active(): void
+    {
+        $user = $this->createMock(User::class);
+        $user->method('isActive')->willReturn(false);
+
+        $invoice = $this->createMock(Invoice::class);
+        $invoice->method('getAmount')->willReturn(12345);
+        $invoice->method('getUser')->willReturn($user);
+
+        $this->invoiceRepository->expects(self::once())
+            ->method('save')
+            ->with($invoice)
+            ->willThrowException(new CannotCreateInvoiceForInactiveUserException('Nie można utworzyć faktury dla nieaktywnego użytkownika'));
+
+        $this->expectException(CannotCreateInvoiceForInactiveUserException::class);
+        $this->expectExceptionMessage('Nie można utworzyć faktury dla nieaktywnego użytkownika');
+
+        $this->invoiceRepository->save($invoice);
     }
 }
