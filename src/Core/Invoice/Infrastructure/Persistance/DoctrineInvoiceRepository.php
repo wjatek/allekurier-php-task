@@ -2,6 +2,7 @@
 
 namespace App\Core\Invoice\Infrastructure\Persistance;
 
+use App\Core\Invoice\Domain\Exception\CannotCreateInvoiceForInactiveUserException;
 use App\Core\Invoice\Domain\Invoice;
 use App\Core\Invoice\Domain\Repository\InvoiceRepositoryInterface;
 use App\Core\Invoice\Domain\Status\InvoiceStatus;
@@ -29,6 +30,10 @@ class DoctrineInvoiceRepository implements InvoiceRepositoryInterface
 
     public function save(Invoice $invoice): void
     {
+        if (!$invoice->getUser()->isActive()) {
+            throw new CannotCreateInvoiceForInactiveUserException('Nie można utworzyć faktury dla nieaktywnego użytkownika');
+        }
+
         $this->entityManager->persist($invoice);
 
         $events = $invoice->pullEvents();
