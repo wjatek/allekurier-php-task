@@ -38,12 +38,24 @@ class DoctrineUserRepository implements UserRepositoryInterface
         return $user;
     }
 
+    public function findByActive(bool $active): array
+    {
+        $users = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.active = :active')
+            ->setParameter('active', $active)
+            ->getQuery()
+            ->getResult();
+
+        return $users;
+    }
+
     public function save(User $user): void
     {
         $this->entityManager->persist($user);
 
         $this->eventDispatcher->dispatch(new UserCreatedEvent($user));
-
     }
 
     public function flush(): void
